@@ -7,6 +7,7 @@ import (
 	"github.com/Bnei-Baruch/uptime-mon/version"
 	"github.com/spf13/viper"
 	"net/http"
+	"os"
 
 	"github.com/coreos/go-oidc"
 	"github.com/gin-contrib/cors"
@@ -20,6 +21,12 @@ func Init() {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
+	}
+	file, err := os.OpenFile(viper.GetString("server.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		log.Info("Failed to log to file, using default stderr")
 	}
 	log.Infof("Starting WF API server version %s", version.Version)
 

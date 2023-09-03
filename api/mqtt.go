@@ -6,7 +6,6 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"time"
 )
 
 var MQTT mqtt.Client
@@ -40,14 +39,12 @@ func (a *PahoLogAdapter) Printf(format string, v ...interface{}) {
 
 func InitMQTT() error {
 	log.Info("MQTT: Init")
-	mqtt.DEBUG = NewPahoLogAdapter(log.DebugLevel)
+	//mqtt.DEBUG = NewPahoLogAdapter(log.DebugLevel)
 	mqtt.WARN = NewPahoLogAdapter(log.WarnLevel)
 	mqtt.CRITICAL = NewPahoLogAdapter(log.PanicLevel)
 	mqtt.ERROR = NewPahoLogAdapter(log.ErrorLevel)
 
 	opts := mqtt.NewClientOptions()
-	//opts.SetOrderMatters(false)
-	opts.SetKeepAlive(10 * time.Second)
 	opts.AddBroker(viper.GetString("mqtt.url"))
 	opts.SetClientID(viper.GetString("mqtt.client_id"))
 	opts.SetUsername(viper.GetString("mqtt.user"))
@@ -60,21 +57,37 @@ func InitMQTT() error {
 	if token := MQTT.Connect(); token.Wait() && token.Error() != nil {
 		return token.Error()
 	}
+
 	return nil
 }
 
 func SubMQTT(c mqtt.Client) {
-	if token := MQTT.Publish(viper.GetString("mqtt.status_topic"), byte(2), true, []byte("Online")); token.Wait() && token.Error() != nil {
-		log.Infof("MQTT: notify status to: %s", viper.GetString("mqtt.status_topic"))
-	} else {
+	if token := MQTT.Publish(viper.GetString("mqtt.status_topic"), byte(1), true, []byte("Online")); token.Wait() && token.Error() != nil {
 		log.Errorf("MQTT: notify status error: %s", token.Error())
+	} else {
+		log.Infof("MQTT: notify status to: %s", viper.GetString("mqtt.status_topic"))
 	}
 
-	//if token := MQTT.Subscribe(viper.GetString("mqtt.topic"), byte(1), gotMessage); token.Wait() && token.Error() != nil {
-	//	log.Infof("MQTT: Subscribed to: %s", viper.GetString("mqtt.topic"))
-	//} else {
-	//	log.Errorf("MQTT: Subscribe error: %s", token.Error())
-	//}
+	execStatus := viper.GetString("mqtt.exec_status")
+	if token := MQTT.Subscribe(execStatus, byte(1), gotMessage); token.Wait() && token.Error() != nil {
+		log.Errorf("MQTT: Subscribe error: %s", token.Error())
+	} else {
+		log.Infof("MQTT: Subscribed to: %s", execStatus)
+	}
+
+	wfStatus := viper.GetString("mqtt.wf_status")
+	if token := MQTT.Subscribe(wfStatus, byte(1), gotMessage); token.Wait() && token.Error() != nil {
+		log.Errorf("MQTT: Subscribe error: %s", token.Error())
+	} else {
+		log.Infof("MQTT: Subscribed to: %s", wfStatus)
+	}
+
+	janusStatus := viper.GetString("mqtt.janus_status")
+	if token := MQTT.Subscribe(janusStatus, byte(1), gotMessage); token.Wait() && token.Error() != nil {
+		log.Errorf("MQTT: Subscribe error: %s", token.Error())
+	} else {
+		log.Infof("MQTT: Subscribed to: %s", janusStatus)
+	}
 }
 
 func LostMQTT(c mqtt.Client, err error) {
@@ -82,7 +95,7 @@ func LostMQTT(c mqtt.Client, err error) {
 }
 
 func gotMessage(c mqtt.Client, m mqtt.Message) {
-	log.Debugf("MQTT: Received message from topic: %s\n", m.Topic())
+	log.Infof("MQTT: Received message %s from topic: %s\n", m.Topic(), string(m.Payload()))
 }
 
 func SendRespond(id string, m *MqttPayload) {

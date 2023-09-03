@@ -17,6 +17,7 @@ func Exec() {
 	viper.AddConfigPath(".")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.AutomaticEnv()
+	viper.Set("LogFile", viper.GetString("server.log"))
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println("Could not read config, using: ", viper.ConfigFileUsed(), err.Error())
 		return
