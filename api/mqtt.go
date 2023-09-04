@@ -3,12 +3,15 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Bnei-Baruch/uptime-mon/utils"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"strings"
 )
 
 var MQTT mqtt.Client
+var STATUS map[string]string
 
 type MqttPayload struct {
 	Action  string      `json:"action,omitempty"`
@@ -39,6 +42,7 @@ func (a *PahoLogAdapter) Printf(format string, v ...interface{}) {
 
 func InitMQTT() error {
 	log.Info("MQTT: Init")
+	STATUS = make(map[string]string)
 	//mqtt.DEBUG = NewPahoLogAdapter(log.DebugLevel)
 	mqtt.WARN = NewPahoLogAdapter(log.WarnLevel)
 	mqtt.CRITICAL = NewPahoLogAdapter(log.PanicLevel)
@@ -96,6 +100,17 @@ func LostMQTT(c mqtt.Client, err error) {
 
 func gotMessage(c mqtt.Client, m mqtt.Message) {
 	log.Infof("MQTT: Received message %s from topic: %s\n", m.Topic(), string(m.Payload()))
+	s := strings.Split(m.Topic(), "/")
+	log.Infof("MQTT: split: %s\n", s[2])
+	if s[2] == "status" {
+		STATUS[s[1]] = string(m.Payload())
+	} else {
+		STATUS[s[2]] = string(m.Payload())
+	}
+	if string(m.Payload()) == "Offline" {
+		//utils.SendEmail(s[2], "Offline")
+		utils.SendSlack(s[2] + " - Offline")
+	}
 }
 
 func SendRespond(id string, m *MqttPayload) {
