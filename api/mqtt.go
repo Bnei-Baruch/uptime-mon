@@ -120,11 +120,9 @@ func gotMessage(c mqtt.Client, m mqtt.Message) {
 			st = "Online"
 		}
 		serviceStatus = st
-		STATUS[s[1]] = st
 	} else {
 		serviceName = s[2]
 		serviceStatus = string(m.Payload())
-		STATUS[s[2]] = string(m.Payload())
 	}
 
 	STATUS[serviceName] = serviceStatus
