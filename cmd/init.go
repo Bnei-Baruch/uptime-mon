@@ -28,7 +28,7 @@ func Init() {
 	} else {
 		log.Info("Failed to log to file, using default stderr")
 	}
-	log.Infof("Starting WF API server version %s", version.Version)
+	log.Infof("- Starting Uptime Monitor - version %s", version.Version)
 
 	// cors
 	corsConfig := cors.DefaultConfig()

@@ -24,6 +24,10 @@ type MqttPayload struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+type JanusStatus struct {
+	Online bool `json:"online,omitempty"`
+}
+
 type PahoLogAdapter struct {
 	level log.Level
 }
@@ -44,9 +48,9 @@ func InitMQTT() error {
 	log.Info("MQTT: Init")
 	STATUS = make(map[string]string)
 	//mqtt.DEBUG = NewPahoLogAdapter(log.DebugLevel)
-	mqtt.WARN = NewPahoLogAdapter(log.WarnLevel)
-	mqtt.CRITICAL = NewPahoLogAdapter(log.PanicLevel)
-	mqtt.ERROR = NewPahoLogAdapter(log.ErrorLevel)
+	//mqtt.WARN = NewPahoLogAdapter(log.WarnLevel)
+	//mqtt.CRITICAL = NewPahoLogAdapter(log.PanicLevel)
+	//mqtt.ERROR = NewPahoLogAdapter(log.ErrorLevel)
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(viper.GetString("mqtt.url"))
@@ -99,17 +103,36 @@ func LostMQTT(c mqtt.Client, err error) {
 }
 
 func gotMessage(c mqtt.Client, m mqtt.Message) {
-	log.Infof("MQTT: Received message %s from topic: %s\n", m.Topic(), string(m.Payload()))
+	log.Debugf("MQTT: Received message %s from topic: %s\n", m.Topic(), string(m.Payload()))
+	var serviceName string
+	var serviceStatus string
+
 	s := strings.Split(m.Topic(), "/")
-	log.Infof("MQTT: split: %s\n", s[2])
 	if s[2] == "status" {
-		STATUS[s[1]] = string(m.Payload())
+		serviceName = s[1]
+		js := &JanusStatus{}
+		st := "Offline"
+		err := json.Unmarshal(m.Payload(), js)
+		if err != nil {
+			log.Errorf("MQTT: Message parsing error: %s", err)
+		}
+		if js.Online {
+			st = "Online"
+		}
+		serviceStatus = st
+		STATUS[s[1]] = st
 	} else {
+		serviceName = s[2]
+		serviceStatus = string(m.Payload())
 		STATUS[s[2]] = string(m.Payload())
 	}
-	if string(m.Payload()) == "Offline" {
+
+	STATUS[serviceName] = serviceStatus
+
+	if serviceStatus == "Offline" {
+		log.Infof("MQTT: Service %s is: %s\n", serviceName, serviceStatus)
 		//utils.SendEmail(s[2], "Offline")
-		utils.SendSlack(s[2] + " - Offline")
+		utils.SendSlack(serviceName + " - Offline")
 	}
 }
 
