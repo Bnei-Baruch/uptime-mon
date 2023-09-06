@@ -38,7 +38,7 @@ func SendEmail(subject string, body string) {
 	}
 }
 
-func SendSlack(msg string) {
+func SendSlackMessage(msg string) {
 	webhookUrl := viper.GetString("notification.slack_webhook")
 
 	slackBody, _ := json.Marshal(SlackMessage{Text: msg})

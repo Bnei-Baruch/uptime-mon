@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"strings"
+	"time"
 )
 
 var MQTT mqtt.Client
@@ -128,9 +129,16 @@ func gotMessage(c mqtt.Client, m mqtt.Message) {
 	STATUS[serviceName] = serviceStatus
 
 	if serviceStatus == "Offline" {
-		log.Infof("MQTT: Service %s is: %s\n", serviceName, serviceStatus)
-		//utils.SendEmail(s[2], "Offline")
-		utils.SendSlack(serviceName + " - Offline")
+		go handleNotification(serviceName)
+	}
+}
+
+func handleNotification(serviceName string) {
+	log.Infof("MQTT: Service %s is: Offlie\n", serviceName)
+	time.Sleep(10 * time.Second)
+	if STATUS[serviceName] == "Offline" {
+		log.Debugf("Sending ntification\n")
+		utils.SendSlackMessage(serviceName + " - Offline")
 	}
 }
 
